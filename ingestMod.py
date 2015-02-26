@@ -97,13 +97,16 @@ class CookieModule(FileIngestModule):
         # If the file has a txt extension, post an artifact to the blackboard.
         if file.getName().find("cookies.sqlite") != -1:
         
+            outputFile = open("C:\\temp\\makisu_" + file.getName() + ".txt", "w")            
+        
             print "\n\n####################################################\n\nAnalyzing " + file.getName() + "\n"
-            msgText = "Analyzing %s" % (file.getName())
-            message = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText)
-            ingestServices = IngestServices.getInstance().postMessage(message)
+            outputFile.write("\n####################################################\n\nAnalyzing " + file.getName() + "\n")
+            #msgText = "Analyzing %s" % (file.getName())
+            #message = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText)
+            #ingestServices = IngestServices.getInstance().postMessage(message)
             
             self.testMethod()
-            self.cookieMain(file)
+            self.cookieMain(file, outputFile)
         
             art = file.newArtifact(BlackboardArtifact.ARTIFACT_TYPE.TSK_INTERESTING_FILE_HIT)
             att = BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_SET_NAME.getTypeID(), "Sample Jython File Ingest Module", "Text Files")
@@ -119,16 +122,16 @@ class CookieModule(FileIngestModule):
                 len = inputStream.read(buffer)
 
             # Send the size of the file to the ingest messages in box. 
-            msgText = "Size of %s is %d bytes" % ((file.getName(), totLen))
-            message = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText)
-            ingestServices = IngestServices.getInstance().postMessage(message)
-
+            msgText2 = "Size of %s is %d bytes" % ((file.getName(), totLen))
+            message2 = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText2)
+            ingestServices = IngestServices.getInstance().postMessage(message2)
+            outputFile.closed
         return IngestModule.ProcessResult.OK  
         
     def testMethod(self):
         print "\nIn testMethod!!!!\n"
 
-    def cookieMain(self, file):
+    def cookieMain(self, file, outputFile):
     
         global chrome_pattern_utmb
         global chrome_pattern_utmz
@@ -202,8 +205,18 @@ class CookieModule(FileIngestModule):
         
         # Read the contents of the file.
         inputStream = ReadContentInputStream(file)
-        chunk = jarray.zeros(maxfilesize, "b")
-        len = inputStream.read(chunk)
+        chunkJarray = jarray.zeros(maxfilesize, "b")
+        len = inputStream.read(chunkJarray)
+        #chunk = chunkJarray.toString()
+        chunk = "".join(map(chr, chunkJarray))
+		
+        #file_object = open("C:\\temp\\cookies.sqlite", 'rb')
+        #chunk = file_object.read(maxfilesize)
+        #len = maxfilesize
+        
+        print ("Bytes read: %d\n" % (len))
+        #if len > 46000:
+        #    print ("%02x %02x %02x %02x %02x\n" % (chunk[45040],chunk[45041],chunk[45042],chunk[45043],chunk[45044]))
     
         self.process_chrome_utma(chrome_pattern_utma, chunk)
         self.process_chrome_utmb(chrome_pattern_utmb, chunk)
@@ -241,15 +254,19 @@ class CookieModule(FileIngestModule):
         print "FireFox __utmz count found: " + str(ff_utmz_count)
         print "FireFox __utmz count processed: " + str(processed)
         msgText = "FireFox __utma count processed: " + str(ff_utma_count)
+        outputFile.write(msgText + "\n")
         message = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText)
         ingestServices = IngestServices.getInstance().postMessage(message)
         msgText = "FireFox __utmb count processed: " + str(ff_utmb_count)
+        outputFile.write(msgText + "\n")
         message = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText)
         ingestServices = IngestServices.getInstance().postMessage(message)
         msgText = "FireFox __utmz count found: " + str(ff_utmz_count)
+        outputFile.write(msgText + "\n")
         message = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText)
         ingestServices = IngestServices.getInstance().postMessage(message)
         msgText = "FireFox __utmz count processed: " + str(processed)
+        outputFile.write(msgText + "\n")
         message = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText)
         ingestServices = IngestServices.getInstance().postMessage(message)
 
