@@ -53,7 +53,7 @@ from org.sleuthkit.autopsy.casemodule.services import FileManager
 class SampleJythonIngestModuleFactory(IngestModuleFactoryAdapter):
     
     def getModuleDisplayName(self):
-        return "Sample Jython Ingest Module"
+        return "CookieModule"
     
     def getModuleDescription(self):
         return "A sample Jython ingest module"
@@ -75,13 +75,13 @@ class SampleJythonIngestModuleFactory(IngestModuleFactoryAdapter):
     
     # can return null if isFileIngestModuleFactory returns false
     def createFileIngestModule(self, ingestOptions):
-        return SampleJythonFileIngestModule()
+        return CookieModule()
 
 
 # File-level ingest module.  One gets created per thread.
 # Looks at the attributes of the passed in file.
 # if you don't need a file-level module, delete this class.
-class SampleJythonFileIngestModule(FileIngestModule):
+class CookieModule(FileIngestModule):
 
     def startUp(self, context):
         pass
@@ -95,9 +95,13 @@ class SampleJythonFileIngestModule(FileIngestModule):
         
     def process(self, file):
         # If the file has a txt extension, post an artifact to the blackboard.
-        if file.getName().find("test") != -1:
+        if file.getName().find("cookies.sqlite") != -1:
         
-            print "\n\n####################################################\n"
+            print "\n\n####################################################\n\nAnalyzing " + file.getName() + "\n"
+            msgText = "Analyzing %s" % (file.getName())
+            message = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText)
+            ingestServices = IngestServices.getInstance().postMessage(message)
+            
             self.testMethod()
             self.cookieMain(file)
         
@@ -116,11 +120,11 @@ class SampleJythonFileIngestModule(FileIngestModule):
 
             # Send the size of the file to the ingest messages in box. 
             msgText = "Size of %s is %d bytes" % ((file.getName(), totLen))
-            message = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "Sample Jython File IngestModule", msgText)
+            message = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText)
             ingestServices = IngestServices.getInstance().postMessage(message)
 
         return IngestModule.ProcessResult.OK  
-		
+        
     def testMethod(self):
         print "\nIn testMethod!!!!\n"
 
@@ -138,7 +142,7 @@ class SampleJythonFileIngestModule(FileIngestModule):
         global apple_utma_pattern
         global apple_utmb_pattern
         global apple_utmz_pattern
-	
+    
         #chrome utm grep patterns
         chrome_pattern_utma =  re.compile(r'__utma(([0-9]{0,10}\.){5}([0-9])*)(\/)')
         chrome_pattern_utmz =  re.compile(r'(__utmz)(([0-9]{0,10}\.){4}utm(.*?)\s*\x2F\x00\x2E)')
@@ -184,7 +188,7 @@ class SampleJythonFileIngestModule(FileIngestModule):
         not_processed= []
 
         #can be increased if more ram is available
-        maxfilesize = 100000000
+        maxfilesize = 500000
 
 
         #printable chars allowed in urls and domain names
@@ -198,7 +202,7 @@ class SampleJythonFileIngestModule(FileIngestModule):
         
         # Read the contents of the file.
         inputStream = ReadContentInputStream(file)
-        chunk = jarray.zeros(500000, "b")
+        chunk = jarray.zeros(maxfilesize, "b")
         len = inputStream.read(chunk)
     
         self.process_chrome_utma(chrome_pattern_utma, chunk)
@@ -222,12 +226,32 @@ class SampleJythonFileIngestModule(FileIngestModule):
         print "Chrome __utma count processed: " + str(chrome_utma_count)
         print "Chrome __utmb count processed: " + str(chrome_utmb_count)
         print "Chrome __utmz count found: " + str(chrome_utmz_count)
-    
+        msgText = "Chrome __utma count processed: " + str(chrome_utma_count)
+        message = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText)
+        ingestServices = IngestServices.getInstance().postMessage(message)        
+        msgText = "Chrome __utmb count processed: " + str(chrome_utmb_count)
+        message = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText)
+        ingestServices = IngestServices.getInstance().postMessage(message)
+        msgText = "Chrome __utmz count found: " + str(chrome_utmz_count)
+        message = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText)
+        ingestServices = IngestServices.getInstance().postMessage(message)
 
         print "FireFox __utma count processed: " + str(ff_utma_count)
         print "FireFox __utmb count processed: " + str(ff_utmb_count)
         print "FireFox __utmz count found: " + str(ff_utmz_count)
         print "FireFox __utmz count processed: " + str(processed)
+        msgText = "FireFox __utma count processed: " + str(ff_utma_count)
+        message = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText)
+        ingestServices = IngestServices.getInstance().postMessage(message)
+        msgText = "FireFox __utmb count processed: " + str(ff_utmb_count)
+        message = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText)
+        ingestServices = IngestServices.getInstance().postMessage(message)
+        msgText = "FireFox __utmz count found: " + str(ff_utmz_count)
+        message = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText)
+        ingestServices = IngestServices.getInstance().postMessage(message)
+        msgText = "FireFox __utmz count processed: " + str(processed)
+        message = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText)
+        ingestServices = IngestServices.getInstance().postMessage(message)
 
         print "IE __utma count processed: " + str(ie_utma_count)
         print "IE __utmb count processed: " + str(ie_utmb_count)
@@ -310,7 +334,10 @@ class SampleJythonFileIngestModule(FileIngestModule):
                 utma_value["Hit"]=(utma_values[5])
             
             if toPrint == True:
-                print(current_file + "\t" + str(file_offset) + "\t" + str(type) + "\t" + str(host) + "\t" + str(utma_value['Created']) + "\t" + str(utma_value["2ndRecentVisit"]) +"\t" + str(utma_value["MostRecent"]) + "\t" +  str(utma_value["Hit"].rstrip("\n")) + "\n")  
+                msgText = current_file + "\t" + str(file_offset) + "\t" + str(type) + "\t" + str(host) + "\t" + str(utma_value['Created']) + "\t" + str(utma_value["2ndRecentVisit"]) +"\t" + str(utma_value["MostRecent"]) + "\t" +  str(utma_value["Hit"].rstrip("\n")) + "\n"
+                print msgText
+                message = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText)
+                ingestServices = IngestServices.getInstance().postMessage(message)                
             return utma_value
         
     def parse_utmb(cookie_value,file_offset,host,c_type):

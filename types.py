@@ -33,7 +33,6 @@ try:
 except NameError:
     StringTypes = (StringType,)
 
-BufferType = buffer
 
 TupleType = tuple
 ListType = list
