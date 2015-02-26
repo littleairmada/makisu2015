@@ -29,11 +29,13 @@
 
 import jarray
 import sys
+#import uuid
 import re
 #import urllib
 #import datetime
 #import os
 from java.lang import System
+from org.python.core.util import StringUtil
 from org.sleuthkit.datamodel import SleuthkitCase
 from org.sleuthkit.datamodel import AbstractFile
 from org.sleuthkit.datamodel import ReadContentInputStream
@@ -82,7 +84,8 @@ class SampleJythonIngestModuleFactory(IngestModuleFactoryAdapter):
 # Looks at the attributes of the passed in file.
 # if you don't need a file-level module, delete this class.
 class CookieModule(FileIngestModule):
-
+    current_file = None
+    processed = 0
     def startUp(self, context):
         pass
 
@@ -97,7 +100,10 @@ class CookieModule(FileIngestModule):
         # If the file has a txt extension, post an artifact to the blackboard.
         if file.getName().find("cookies.sqlite") != -1:
         
-            outputFile = open("C:\\temp\\makisu_" + file.getName() + ".txt", "w")            
+            #tempFileName = "C:\\temp\\mak_" + uuid.uuid4()
+            #print "temp file : " + tempFileName
+            outputFile = open("C:\\temp\\makisu_" + file.getName() + ".txt", "w") 
+            self.current_file = file.getName()			
         
             print "\n\n####################################################\n\nAnalyzing " + file.getName() + "\n"
             outputFile.write("\n####################################################\n\nAnalyzing " + file.getName() + "\n")
@@ -145,6 +151,24 @@ class CookieModule(FileIngestModule):
         global apple_utma_pattern
         global apple_utmb_pattern
         global apple_utmz_pattern
+        global chrome_utma_count
+        global chrome_utmb_count
+        global chrome_utmz_count
+
+        global ff_utma_count
+        global ff_utmb_count
+        global ff_utmz_count
+
+        global ie_utma_count
+        global ie_utmb_count
+        global ie_utmz_count
+
+        global apple_utma_count
+        global apple_utmb_count
+        global apple_utmz_count
+
+        global gif__UTF16_count
+        global gif_ASCII_count
     
         #chrome utm grep patterns
         chrome_pattern_utma =  re.compile(r'__utma(([0-9]{0,10}\.){5}([0-9])*)(\/)')
@@ -187,10 +211,11 @@ class CookieModule(FileIngestModule):
         gif__UTF16_count = 0
         gif_ASCII_count = 0
 
-        processed = 0
+        self.processed = 0
         not_processed= []
 
         #can be increased if more ram is available
+        global maxfilesize
         maxfilesize = 500000
 
 
@@ -208,11 +233,14 @@ class CookieModule(FileIngestModule):
         chunkJarray = jarray.zeros(maxfilesize, "b")
         len = inputStream.read(chunkJarray)
         #chunk = chunkJarray.toString()
-        chunk = "".join(map(chr, chunkJarray))
-		
+        #chunk = "".join(map(chr, chunkJarray))
+        #chunk = chunkJarray.decode("utf-8")        
+        chunk = StringUtil().fromBytes(chunkJarray)        
+        
         #file_object = open("C:\\temp\\cookies.sqlite", 'rb')
         #chunk = file_object.read(maxfilesize)
         #len = maxfilesize
+        #chunk = ""
         
         print ("Bytes read: %d\n" % (len))
         #if len > 46000:
@@ -281,7 +309,7 @@ class CookieModule(FileIngestModule):
     #########################  Functions to process individual cookie values (utma, utmb and utmz)   ##########################
 
     #parse the utma values. Takes the utma value as input
-    def parse_utma(cookie_value,file_offset,host,type,toPrint=True):
+    def parse_utma(self, cookie_value,file_offset,host,type,toPrint=True):
         
         
         #create dictionary to hold utma values
@@ -351,13 +379,13 @@ class CookieModule(FileIngestModule):
                 utma_value["Hit"]=(utma_values[5])
             
             if toPrint == True:
-                msgText = current_file + "\t" + str(file_offset) + "\t" + str(type) + "\t" + str(host) + "\t" + str(utma_value['Created']) + "\t" + str(utma_value["2ndRecentVisit"]) +"\t" + str(utma_value["MostRecent"]) + "\t" +  str(utma_value["Hit"].rstrip("\n")) + "\n"
+                msgText = self.current_file + "\t" + str(file_offset) + "\t" + str(type) + "\t" + str(host) + "\t" + str(utma_value['Created']) + "\t" + str(utma_value["2ndRecentVisit"]) +"\t" + str(utma_value["MostRecent"]) + "\t" +  str(utma_value["Hit"].rstrip("\n")) + "\n"
                 print msgText
                 message = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText)
                 ingestServices = IngestServices.getInstance().postMessage(message)                
             return utma_value
         
-    def parse_utmb(cookie_value,file_offset,host,c_type):
+    def parse_utmb(self, cookie_value,file_offset,host,c_type):
         
         #create dictionary to hold utmb values
         utmb_value = {}
@@ -418,10 +446,10 @@ class CookieModule(FileIngestModule):
                     except:
                         utmb_value["StartCurrSess"]="Error on conversion"
                         
-        print(current_file + "\t" + str(file_offset) + "\t" + str(c_type) + "\t" + str(host) + "\t" + utmb_value["PageViews"] + "\t" + utmb_value["Outbound"] + "\t" + utmb_value["StartCurrSess"] +  "\n")
+        print(self.current_file + "\t" + str(file_offset) + "\t" + str(c_type) + "\t" + str(host) + "\t" + utmb_value["PageViews"] + "\t" + utmb_value["Outbound"] + "\t" + utmb_value["StartCurrSess"] +  "\n")
         return utmb_value    
 
-    def parse_utmz(cookie_value,file_offset,host,c_type):
+    def parse_utmz(self, cookie_value,file_offset,host,c_type):
         
         #create dictionary to hold utmz values
         utmz_value = {}
@@ -522,11 +550,11 @@ class CookieModule(FileIngestModule):
                 utmz_value["ReferringPage"]='utmcct not found'
             
             
-            print(current_file + "\t" + str(file_offset) + "\t" + str(c_type) + "\t" + str(host) + "\t" + str(utmz_value['LastUpdate']) + "\t" + str(utmz_value["Source"]) +"\t" + str(utmz_value["CampName"]) + "\t" + utmz_value["AccesMethod"] + "\t" + str(utmz_value["Keyword"]) + "\t" + utmz_value["ReferringPage"] + "\n")   
+            print(self.current_file + "\t" + str(file_offset) + "\t" + str(c_type) + "\t" + str(host) + "\t" + str(utmz_value['LastUpdate']) + "\t" + str(utmz_value["Source"]) +"\t" + str(utmz_value["CampName"]) + "\t" + utmz_value["AccesMethod"] + "\t" + str(utmz_value["Keyword"]) + "\t" + utmz_value["ReferringPage"] + "\n")   
             return utmz_value
 
 
-    def parse_utm_gif(line):
+    def parse_utm_gif(self, line):
 
         utm_gif={}
 
@@ -606,6 +634,7 @@ class CookieModule(FileIngestModule):
     def process_chrome_utma(self, pattern, chunk):
         global chrome_utma_count
         global loop
+        global maxfilesize
         count = 0  
         #max size of host name
         max_size = 70    
@@ -634,13 +663,14 @@ class CookieModule(FileIngestModule):
             host = chunk[beginning_offset+1:end_offset]
                 
             file_offset = (loop*(maxfilesize))+beginning_offset
-            parse_utma(m.group(1),file_offset,host,"chrome")
+            self.parse_utma(m.group(1),file_offset,host,"chrome")
             chrome_utma_count = chrome_utma_count + 1      
            
             
     def process_chrome_utmb(self, pattern, chunk):
         global chrome_utmb_count
         global loop
+        global maxfilesize
         count = 0  
         max_size = 70
 
@@ -670,11 +700,12 @@ class CookieModule(FileIngestModule):
             #reset count
             count = 0
             file_offset = (loop*(maxfilesize))+beginning_offset
-            parse_utmb(m.group(2),file_offset,host,"chrome")
+            self.parse_utmb(m.group(2),file_offset,host,"chrome")
      
     def process_chrome_utmz(self, pattern,chunk):
         global chrome_utmz_count
         global loop
+        global maxfilesize
         count = 0 
         #maximun size of Hostname
         max_size = 70
@@ -707,12 +738,13 @@ class CookieModule(FileIngestModule):
                 
             file_offset = (loop*(maxfilesize))+beginning_offset
                 
-            parse_utmz((m.group())[6:-3],file_offset,host,"chrome")
+            self.parse_utmz((m.group())[6:-3],file_offset,host,"chrome")
             
      
     def process_firefox_utma(self, pattern, chunk):
         global ff_utma_count
         global loop
+        global maxfilesize
         count = 0
         
         for m in pattern.finditer(chunk):
@@ -724,13 +756,14 @@ class CookieModule(FileIngestModule):
             if host != "":
                             
                 file_offset = (loop*(maxfilesize))+m.start()
-                parse_utma(m.group(),file_offset,host,"firefox")
+                self.parse_utma(m.group(),file_offset,host,"firefox")
                     
                 ff_utma_count = ff_utma_count + 1
             
     def process_firefox_utmb(self, pattern,chunk):
         global ff_utmb_count
         global loop
+        global maxfilesize
         #count = 0
         
         for m in pattern.finditer(chunk):
@@ -749,13 +782,12 @@ class CookieModule(FileIngestModule):
             host = parts[2]
             
             file_offset = (loop*(maxfilesize))+m.start()
-            parse_utmb(str(value),file_offset,host,"firefox")
+            self.parse_utmb(str(value),file_offset,host,"firefox")
             
     def process_firefox_utmz(self, p,chunk):
         global ff_utmz_count
         global loop
-        global processed
-        
+        global maxfilesize        
         
         for m in p.finditer(chunk):
             ff_utmz_count = ff_utmz_count + 1
@@ -774,9 +806,9 @@ class CookieModule(FileIngestModule):
             h = re.search(pattern,m.group())
             if h != None:
                 host = h.group()[:-2]
-                processed = processed + 1
+                self.processed = self.processed + 1
                 file_offset = (loop*(maxfilesize))+m.start()   
-                parse_utmz(m.group(2),file_offset,host,"firefox")
+                self.parse_utmz(m.group(2),file_offset,host,"firefox")
                  
             else:
                 file_offset = (loop*(maxfilesize))+m.start()
@@ -785,6 +817,7 @@ class CookieModule(FileIngestModule):
 
     def process_ie_utma(self, p,chunk):
         global ie_utma_count
+        global maxfilesize
         
         p = re.compile(ie_utma_pattern)
         for m in p.finditer(chunk):
@@ -792,10 +825,11 @@ class CookieModule(FileIngestModule):
             print "IE utma hit found at offset " + str(file_offset)
             ie_utma_count =  ie_utma_count+1
             host = str(m.group(5).rstrip('\n'))
-            parse_utma(m.group(2),file_offset,host, "ie")
+            self.parse_utma(m.group(2),file_offset,host, "ie")
                
     def process_ie_utmb(self, p,chunk):
         global ie_utmb_count
+        global maxfilesize
         for m in p.finditer(chunk):
             file_offset = (loop*(maxfilesize))+m.start()
             print "IE utmb hit found at offset " + str(file_offset)
@@ -804,10 +838,11 @@ class CookieModule(FileIngestModule):
                            
             host = m.group(5).rstrip("\n")
             file_offset = (loop*(maxfilesize))+m.start()
-            parse_utmb(m.group(2).rstrip("\n"),file_offset,host,"ie")
+            self.parse_utmb(m.group(2).rstrip("\n"),file_offset,host,"ie")
             
     def process_ie_utmz(self, p,chunk):
         global ie_utmz_count
+        global maxfilesize
         for m in p.finditer(chunk):
             file_offset = (loop*(maxfilesize))+m.start()
             print "IE utmz hit found at offset " + str(file_offset)
@@ -816,23 +851,25 @@ class CookieModule(FileIngestModule):
             ie_utmz_count = ie_utmz_count + 1
             host = m.group(4).rstrip("\n")
             file_offset = (loop*(maxfilesize))+m.start()    
-            parse_utmz(m.group(2).rstrip("\n"),file_offset,host,"ie")
+            self.parse_utmz(m.group(2).rstrip("\n"),file_offset,host,"ie")
           
     def process_apple_utma(self, pattern,chunk):
         global loop
         global apple_utma_count
+        global maxfilesize
         
         for m in pattern.finditer(chunk):
             file_offset = (loop*(maxfilesize))+m.start()
             print "apple utma hit found at offset " + str(file_offset)
                   
             host = m.group(4)
-            parse_utma(m.group(2),file_offset,host,"apple")
+            self.parse_utma(m.group(2),file_offset,host,"apple")
             apple_utma_count = apple_utma_count + 1
 
     def process_apple_utmb(self, pattern, chunk):
         global loop
         global apple_utmb_count
+        global maxfilesize
         
         for m in pattern.finditer(chunk):
             file_offset = (loop*(maxfilesize))+m.start()
@@ -840,11 +877,12 @@ class CookieModule(FileIngestModule):
             
             apple_utmb_count = apple_utmb_count + 1
             host = m.group(4)
-            parse_utmb(m.group(2),file_offset,host,"apple")
+            self.parse_utmb(m.group(2),file_offset,host,"apple")
             file_offset = (loop*(maxfilesize))+m.start()
      
     def process_apple_utmz(self, pattern,chunk):
         global apple_utmz_count
+        global maxfilesize
         global loop
         
         for m in pattern.finditer(chunk):
@@ -853,10 +891,11 @@ class CookieModule(FileIngestModule):
                     
             apple_utmz_count = apple_utmz_count + 1
             host = m.group(4)
-            parse_utmz(m.group(2),file_offset,host,"apple")
+            self.parse_utmz(m.group(2),file_offset,host,"apple")
           
     def process_utm_gif_UTF16(self, pattern,chunk):
         global gif__UTF16_count
+        global maxfilesize
         count = 0
         line = ""
         max_size = 2000
@@ -880,10 +919,10 @@ class CookieModule(FileIngestModule):
                     break
                                        
             if line:
-                utm_gif = parse_utm_gif(line)
+                utm_gif = self.parse_utm_gif(line)
                 
                 #print utma values
-                print(current_file + "\t"+ str(file_offset) + "\t" + "utm.gif UTF16\t" + (utm_gif['utma_created']) + "\t" + str(utm_gif["utma_previous"]) +"\t" + str(utm_gif["utma_current"]) + "\t" +  str(utm_gif["utma_hit"]) + "\t")
+                print(self.current_file + "\t"+ str(file_offset) + "\t" + "utm.gif UTF16\t" + (utm_gif['utma_created']) + "\t" + str(utm_gif["utma_previous"]) +"\t" + str(utm_gif["utma_current"]) + "\t" +  str(utm_gif["utma_hit"]) + "\t")
                 
                 #print utmhn value
                 print(utm_gif["utmhn_hostname"]+"\t")
@@ -902,6 +941,7 @@ class CookieModule(FileIngestModule):
         line = ""
         max_size = 2000
         global gif_ASCII_count
+        global maxfilesize
         
         p = re.compile(gif_cache_pattern_ASCII)
         for m in p.finditer(chunk):
@@ -927,10 +967,10 @@ class CookieModule(FileIngestModule):
                     break
                                       
             if line:
-                utm_gif = parse_utm_gif(line)
+                utm_gif = self.parse_utm_gif(line)
                 
                 #print utma values
-                print(current_file + "\t"+ str(file_offset) + "\tutm.gif ASCII\t" + (utm_gif['utma_created']) + "\t" + str(utm_gif["utma_previous"]) +"\t" + str(utm_gif["utma_current"]) + "\t" +  str(utm_gif["utma_hit"]) + "\t")
+                print(self.current_file + "\t"+ str(file_offset) + "\tutm.gif ASCII\t" + (utm_gif['utma_created']) + "\t" + str(utm_gif["utma_previous"]) +"\t" + str(utm_gif["utma_current"]) + "\t" +  str(utm_gif["utma_hit"]) + "\t")
                 
                 #print utmhn value
                 print(utm_gif["utmhn_hostname"]+"\t")
