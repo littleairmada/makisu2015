@@ -85,21 +85,18 @@ class SampleJythonIngestModuleFactory(IngestModuleFactoryAdapter):
 # if you don't need a file-level module, delete this class.
 class CookieModule(FileIngestModule):
     current_file = None
+    gFile = None
     processed = 0
     def startUp(self, context):
         pass
 
-
-
     def shutDown(self):
         pass
-        
-
         
     def process(self, file):
         # If the file has a txt extension, post an artifact to the blackboard.
         if file.getName().find("cookies.sqlite") != -1:
-        
+            self.gFile = file
             #tempFileName = "C:\\temp\\mak_" + uuid.uuid4()
             #print "temp file : " + tempFileName
             outputFile = open("C:\\temp\\makisu_" + file.getName() + ".txt", "w") 
@@ -107,16 +104,7 @@ class CookieModule(FileIngestModule):
         
             print "\n\n####################################################\n\nAnalyzing " + file.getName() + "\n"
             outputFile.write("\n####################################################\n\nAnalyzing " + file.getName() + "\n")
-            #msgText = "Analyzing %s" % (file.getName())
-            #message = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText)
-            #ingestServices = IngestServices.getInstance().postMessage(message)
-            
-            self.testMethod()
             self.cookieMain(file, outputFile)
-        
-            art = file.newArtifact(BlackboardArtifact.ARTIFACT_TYPE.TSK_INTERESTING_FILE_HIT)
-            att = BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_SET_NAME.getTypeID(), "Sample Jython File Ingest Module", "Text Files")
-            art.addAttribute(att)
 
             # Read the contents of the file.
             inputStream = ReadContentInputStream(file)
@@ -133,9 +121,6 @@ class CookieModule(FileIngestModule):
             ingestServices = IngestServices.getInstance().postMessage(message2)
             outputFile.closed
         return IngestModule.ProcessResult.OK  
-        
-    def testMethod(self):
-        print "\nIn testMethod!!!!\n"
 
     def cookieMain(self, file, outputFile):
     
@@ -280,7 +265,7 @@ class CookieModule(FileIngestModule):
         print "FireFox __utma count processed: " + str(ff_utma_count)
         print "FireFox __utmb count processed: " + str(ff_utmb_count)
         print "FireFox __utmz count found: " + str(ff_utmz_count)
-        print "FireFox __utmz count processed: " + str(self.processed)
+        print "FireFox __utmz count processed: " + str(processed)
         msgText = "FireFox __utma count processed: " + str(ff_utma_count)
         outputFile.write(msgText + "\n")
         message = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText)
@@ -293,7 +278,7 @@ class CookieModule(FileIngestModule):
         outputFile.write(msgText + "\n")
         message = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText)
         ingestServices = IngestServices.getInstance().postMessage(message)
-        msgText = "FireFox __utmz count processed: " + str(self.processed)
+        msgText = "FireFox __utmz count processed: " + str(processed)
         outputFile.write(msgText + "\n")
         message = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText)
         ingestServices = IngestServices.getInstance().postMessage(message)
@@ -308,10 +293,12 @@ class CookieModule(FileIngestModule):
         
     #########################  Functions to process individual cookie values (utma, utmb and utmz)   ##########################
 
+    def throwWarning(self, msg):
+        message = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModulez", msg)
+        IngestServices.getInstance().postMessage(message)   
+
     #parse the utma values. Takes the utma value as input
     def parse_utma(self, cookie_value,file_offset,host,type,toPrint=True):
-        
-        
         #create dictionary to hold utma values
         utma_value = {}
         
@@ -335,21 +322,21 @@ class CookieModule(FileIngestModule):
                 try:
                     utma_value["Created"]=(datetime.datetime.fromtimestamp(int(utma_values[3])).strftime("%Y-%m-%d %H:%M:%S"))
                 except:
-                    utma_value["Created"] = "Error on conversion"
+                    utma_value["Created"] = utma_values[3]#"Error on conversion"
                                 
                 #second most recent visit
                 utma_value["2ndRecentVisit_Epoch"] = (utma_values[4])
                 try:
                     utma_value["2ndRecentVisit"]=(datetime.datetime.fromtimestamp(int(utma_values[3])).strftime("%Y-%m-%d %H:%M:%S"))
                 except:
-                    utma_value["2ndRecentVisit"]   = "Error on conversion"
+                    utma_value["2ndRecentVisit"]   = utma_values[3]#"Error on conversion"
                             
                 #most recent visit
                 utma_value["MostRecent_Epoch"] = (utma_values[5])
                 try:
                     utma_value["MostRecent"]=(datetime.datetime.fromtimestamp(int(utma_values[5])).strftime("%Y-%m-%d %H:%M:%S"))
                 except:
-                    utma_value["MostRecent"] = "Error on conversion"
+                    utma_value["MostRecent"] = utma_values[5]#"Error on conversion"
                                 
                 #number of visits
                 utma_value["Hit"]=(utma_values[6])
@@ -361,30 +348,62 @@ class CookieModule(FileIngestModule):
                 try:
                     utma_value["Created"]=(datetime.datetime.fromtimestamp(int(utma_values[2])).strftime("%Y-%m-%d %H:%M:%S"))
                 except:
-                    utma_value["Created"] = "Error on conversion"                
+                    utma_value["Created"] = utma_values[2]#"Error on conversion"                
                 #second most recent visit
                 utma_value["2ndRecentVisit_Epoch"] = (utma_values[3])
                 try:
                     utma_value["2ndRecentVisit"]=(datetime.datetime.fromtimestamp(int(utma_values[3])).strftime("%Y-%m-%d %H:%M:%S"))
                 except:
-                    utma_value["2ndRecentVisit"]   = "Error on conversion"          
+                    utma_value["2ndRecentVisit"]   = utma_values[3]#"Error on conversion"          
                 
                 #most recent visit
                 utma_value["MostRecent_Epoch"] = (utma_values[4])
                 try:
                     utma_value["MostRecent"]=(datetime.datetime.fromtimestamp(int(utma_values[4])).strftime("%Y-%m-%d %H:%M:%S"))
                 except:
-                    utma_value["MostRecent"] = "Error on conversion"
+                    utma_value["MostRecent"] = utma_values[4]#"Error on conversion"
                
                 utma_value["Hit"]=(utma_values[5])
             
             if toPrint == True:
                 msgText = self.current_file + "\t" + str(file_offset) + "\t" + str(type) + "\t" + str(host) + "\t" + str(utma_value['Created']) + "\t" + str(utma_value["2ndRecentVisit"]) +"\t" + str(utma_value["MostRecent"]) + "\t" +  str(utma_value["Hit"].rstrip("\n")) + "\n"
+                #msgText = str(utma_value['Created']) + "\t" + str(utma_value["2ndRecentVisit"]) +"\t" + str(utma_value["MostRecent"]) + "\t" +  str(utma_value["Hit"].rstrip("\n")) + "\n"
                 print msgText
-                message = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText)
-                ingestServices = IngestServices.getInstance().postMessage(message)                
+                hitCount = None;
+                try:
+                    hitCount = int(utma_value["Hit"])
+                except:
+                    hitCount = "Unknown"
+                self.addInterestingItem(msgText, dateCreated = long(utma_value['Created']), secondRecentVisit = long(utma_value["2ndRecentVisit"]), hits = hitCount, domain = host, category = type, recentVisit = long(utma_value["MostRecent"]))
+                #message = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText)
+                #ingestServices = IngestServices.getInstance().postMessage(message)                
             return utma_value
-        
+
+    def addInterestingItem(self, sValue, dateCreated = None, secondRecentVisit = None, hits = None, domain = None, category = None, recentVisit = None):
+        art = self.gFile.newArtifact(BlackboardArtifact.ARTIFACT_TYPE.TSK_INTERESTING_FILE_HIT)
+        att = BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_SET_NAME.getTypeID(), "CookieModule", "Super Cookie")
+        value = BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_VALUE.getTypeID(), "CookieModule", sValue)
+        art.addAttribute(att)
+        if category != None:
+            browser = BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_CATEGORY.getTypeID(), "CookieModule", category)
+            art.addAttribute(browser)
+        if domain != None:
+            host = BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_DOMAIN.getTypeID(), "CookieModule", domain)
+            art.addAttribute(host)
+        if dateCreated != None:
+            creationDate = BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_DATETIME_CREATED.getTypeID(), "CookieModule", dateCreated)
+            art.addAttribute(creationDate)
+        if recentVisit != None:
+            visit = BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_DATETIME_ACCESSED.getTypeID(), "CookieModule", recentVisit)
+            art.addAttribute(visit)
+        if secondRecentVisit != None:
+            secondVisit = BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_DATETIME.getTypeID(), "CookieModule", secondRecentVisit)
+            art.addAttribute(secondVisit)
+        if hits != None:
+            hitCount = BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_COUNT.getTypeID(), "CookieModule", hits)
+            art.addAttribute(hitCount)
+        art.addAttribute(value)
+
     def parse_utmb(self, cookie_value,file_offset,host,c_type):
         
         #create dictionary to hold utmb values
