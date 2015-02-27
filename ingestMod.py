@@ -95,34 +95,37 @@ class CookieModule(FileIngestModule):
         
     def process(self, file):
         # If the file has a txt extension, post an artifact to the blackboard.
-        if file.getName().find("cookies.sqlite") != -1:
+        lcFileName = file.getName().lower()
+        lcParentPath = file.getParentPath().lower()
+        #if lcFileName.find("cookies") != -1 or lcFileName.find(".txt") != -1 :
+        if lcFileName.find("cookies") != -1 or lcParentPath.endswith("Windows\Cookies") != -1 and lcFileName.find(".txt") != -1 :
             self.gFile = file
             #tempFileName = "C:\\temp\\mak_" + uuid.uuid4()
             #print "temp file : " + tempFileName
-            outputFile = open("C:\\temp\\makisu_" + file.getName() + ".txt", "w") 
-            self.current_file = file.getName()			
+            #outputFile = open("C:\\temp\\makisu_" + file.getName() + ".txt", "w") 
+            #self.current_file = file.getName()            
         
             print "\n\n####################################################\n\nAnalyzing " + file.getName() + "\n"
-            outputFile.write("\n####################################################\n\nAnalyzing " + file.getName() + "\n")
-            self.cookieMain(file, outputFile)
+            #outputFile.write("\n####################################################\n\nAnalyzing " + file.getName() + "\n")
+            self.cookieMain(file)
 
             # Read the contents of the file.
-            inputStream = ReadContentInputStream(file)
-            buffer = jarray.zeros(1024, "b")
-            totLen = 0
-            len = inputStream.read(buffer)
-            while (len != -1):
-                totLen = totLen + len
-                len = inputStream.read(buffer)
+            #inputStream = ReadContentInputStream(file)
+            #buffer = jarray.zeros(1024, "b")
+            #totLen = 0
+            #len = inputStream.read(buffer)
+            #while (len != -1):
+            #    totLen = totLen + len
+            #    len = inputStream.read(buffer)
 
             # Send the size of the file to the ingest messages in box. 
-            msgText2 = "Size of %s is %d bytes" % ((file.getName(), totLen))
-            message2 = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText2)
-            ingestServices = IngestServices.getInstance().postMessage(message2)
-            outputFile.closed
+            #msgText2 = "Size of %s is %d bytes" % ((file.getName(), totLen))
+            #message2 = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText2)
+            #ingestServices = IngestServices.getInstance().postMessage(message2)
+            #outputFile.closed
         return IngestModule.ProcessResult.OK  
 
-    def cookieMain(self, file, outputFile):
+    def cookieMain(self, file):
     
         global chrome_pattern_utmb
         global chrome_pattern_utmz
@@ -214,74 +217,53 @@ class CookieModule(FileIngestModule):
         loop = 0
         
         # Read the contents of the file.
-        inputStream = ReadContentInputStream(file)
-        chunkJarray = jarray.zeros(maxfilesize, "b")
-        len = inputStream.read(chunkJarray)
-        #chunk = chunkJarray.toString()
-        #chunk = "".join(map(chr, chunkJarray))
-        #chunk = chunkJarray.decode("utf-8")        
-        chunk = StringUtil().fromBytes(chunkJarray)        
+        nLoops = 0
+        while 1:
+            inputStream = ReadContentInputStream(file)
+            chunkJarray = jarray.zeros(maxfilesize, "b")
+            if not chunkJarray:
+               break
+            len = inputStream.read(chunkJarray)   
+            if len != maxfilesize:
+                print "Not enough bytes read: %d\n" % (len)
+                if nLoops > 0:
+                    print"  nLoops = %d;breaking\n" % (nLoops)
+                    break            
+            chunk = StringUtil().fromBytes(chunkJarray)     
         
-        #file_object = open("C:\\temp\\cookies.sqlite", 'rb')
-        #chunk = file_object.read(maxfilesize)
-        #len = maxfilesize
-        #chunk = ""
-        
-        print ("Bytes read: %d\n" % (len))
-        #if len > 46000:
-        #    print ("%02x %02x %02x %02x %02x\n" % (chunk[45040],chunk[45041],chunk[45042],chunk[45043],chunk[45044]))
+            print ("Bytes read: %d\n" % (len))
     
-        self.process_chrome_utma(chrome_pattern_utma, chunk)
-        self.process_chrome_utmb(chrome_pattern_utmb, chunk)
-        self.process_chrome_utmz(chrome_pattern_utmz, chunk)
+            self.process_chrome_utma(chrome_pattern_utma, chunk)
+            #self.process_chrome_utmb(chrome_pattern_utmb, chunk)
+            #self.process_chrome_utmz(chrome_pattern_utmz, chunk)
                     
-        self.process_firefox_utma(moz_pattern_utma,chunk)
-        self.process_firefox_utmb(moz_pattern_utmb,chunk)
-        self.process_firefox_utmz(moz_pattern_utmz,chunk)
+            self.process_firefox_utma(moz_pattern_utma,chunk)
+            #self.process_firefox_utmb(moz_pattern_utmb,chunk)
+            #self.process_firefox_utmz(moz_pattern_utmz,chunk)
                 
-        self.process_ie_utma(ie_utma_pattern,chunk)
-        self.process_ie_utmb(ie_utmb_pattern,chunk)
-        self.process_ie_utmz(ie_utmz_pattern,chunk)
+            self.process_ie_utma(ie_utma_pattern,chunk)
+            #self.process_ie_utmb(ie_utmb_pattern,chunk)
+            #self.process_ie_utmz(ie_utmz_pattern,chunk)
                 
                 
-        self.process_apple_utma(apple_utma_pattern,chunk)
-        self.process_apple_utmb(apple_utmb_pattern,chunk)
-        self.process_apple_utmz(apple_utmz_pattern,chunk)
+            self.process_apple_utma(apple_utma_pattern,chunk)
+            #self.process_apple_utmb(apple_utmb_pattern,chunk)
+            #self.process_apple_utmz(apple_utmz_pattern,chunk)
+            
+            nLoops = nLoops + 1
+            if nLoops > 1:
+                print "nLoops too big - breaking"
+                break
                 
         print "\r\r************ Summary ************"     
         print "Chrome __utma count processed: " + str(chrome_utma_count)
         print "Chrome __utmb count processed: " + str(chrome_utmb_count)
         print "Chrome __utmz count found: " + str(chrome_utmz_count)
-        msgText = "Chrome __utma count processed: " + str(chrome_utma_count)
-        message = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText)
-        ingestServices = IngestServices.getInstance().postMessage(message)        
-        msgText = "Chrome __utmb count processed: " + str(chrome_utmb_count)
-        message = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText)
-        ingestServices = IngestServices.getInstance().postMessage(message)
-        msgText = "Chrome __utmz count found: " + str(chrome_utmz_count)
-        message = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText)
-        ingestServices = IngestServices.getInstance().postMessage(message)
 
         print "FireFox __utma count processed: " + str(ff_utma_count)
         print "FireFox __utmb count processed: " + str(ff_utmb_count)
         print "FireFox __utmz count found: " + str(ff_utmz_count)
-        print "FireFox __utmz count processed: " + str(processed)
-        msgText = "FireFox __utma count processed: " + str(ff_utma_count)
-        outputFile.write(msgText + "\n")
-        message = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText)
-        ingestServices = IngestServices.getInstance().postMessage(message)
-        msgText = "FireFox __utmb count processed: " + str(ff_utmb_count)
-        outputFile.write(msgText + "\n")
-        message = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText)
-        ingestServices = IngestServices.getInstance().postMessage(message)
-        msgText = "FireFox __utmz count found: " + str(ff_utmz_count)
-        outputFile.write(msgText + "\n")
-        message = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText)
-        ingestServices = IngestServices.getInstance().postMessage(message)
-        msgText = "FireFox __utmz count processed: " + str(processed)
-        outputFile.write(msgText + "\n")
-        message = IngestMessage.createMessage(IngestMessage.MessageType.DATA, "CookieModule", msgText)
-        ingestServices = IngestServices.getInstance().postMessage(message)
+        print "FireFox __utmz count processed: " + str(self.processed)
 
         print "IE __utma count processed: " + str(ie_utma_count)
         print "IE __utmb count processed: " + str(ie_utmb_count)
@@ -366,9 +348,10 @@ class CookieModule(FileIngestModule):
                 utma_value["Hit"]=(utma_values[5])
             
             if toPrint == True:
-                msgText = self.current_file + "\t" + str(file_offset) + "\t" + str(type) + "\t" + str(host) + "\t" + str(utma_value['Created']) + "\t" + str(utma_value["2ndRecentVisit"]) +"\t" + str(utma_value["MostRecent"]) + "\t" +  str(utma_value["Hit"].rstrip("\n")) + "\n"
+                msgText = "Fix this later"
+                #msgText = self.current_file + "\t" + str(file_offset) + "\t" + str(type) + "\t" + str(host) + "\t" + str(utma_value['Created']) + "\t" + str(utma_value["2ndRecentVisit"]) +"\t" + str(utma_value["MostRecent"]) + "\t" +  str(utma_value["Hit"].rstrip("\n")) + "\n"
                 #msgText = str(utma_value['Created']) + "\t" + str(utma_value["2ndRecentVisit"]) +"\t" + str(utma_value["MostRecent"]) + "\t" +  str(utma_value["Hit"].rstrip("\n")) + "\n"
-                print msgText
+                #print msgText
                 hitCount = None;
                 try:
                     hitCount = int(utma_value["Hit"])
@@ -382,27 +365,27 @@ class CookieModule(FileIngestModule):
     def addInterestingItem(self, sValue, dateCreated = None, secondRecentVisit = None, hits = None, domain = None, category = None, recentVisit = None):
         art = self.gFile.newArtifact(BlackboardArtifact.ARTIFACT_TYPE.TSK_INTERESTING_FILE_HIT)
         att = BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_SET_NAME.getTypeID(), "CookieModule", "Super Cookie")
-        value = BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_VALUE.getTypeID(), "CookieModule", sValue)
+        #value = BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_VALUE.getTypeID(), "CookieModule", sValue)
         art.addAttribute(att)
         if category != None:
-            browser = BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_CATEGORY.getTypeID(), "CookieModule", category)
+            browser = BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_PROG_NAME.getTypeID(), "CookieModule", category)
             art.addAttribute(browser)
         if domain != None:
             host = BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_DOMAIN.getTypeID(), "CookieModule", domain)
             art.addAttribute(host)
         if dateCreated != None:
-            creationDate = BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_DATETIME_CREATED.getTypeID(), "CookieModule", dateCreated)
+            creationDate = BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_FIRST_VISIT.getTypeID(), "CookieModule", dateCreated)
             art.addAttribute(creationDate)
         if recentVisit != None:
-            visit = BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_DATETIME_ACCESSED.getTypeID(), "CookieModule", recentVisit)
+            visit = BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_LAST_VISIT.getTypeID(), "CookieModule", recentVisit)
             art.addAttribute(visit)
         if secondRecentVisit != None:
-            secondVisit = BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_DATETIME.getTypeID(), "CookieModule", secondRecentVisit)
+            secondVisit = BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_SECOND_RECENT_VISIT.getTypeID(), "CookieModule", secondRecentVisit)
             art.addAttribute(secondVisit)
         if hits != None:
-            hitCount = BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_COUNT.getTypeID(), "CookieModule", hits)
+            hitCount = BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_NUM_SESSIONS.getTypeID(), "CookieModule", hits)
             art.addAttribute(hitCount)
-        art.addAttribute(value)
+        #art.addAttribute(value)
 
     def parse_utmb(self, cookie_value,file_offset,host,c_type):
         
@@ -465,7 +448,7 @@ class CookieModule(FileIngestModule):
                     except:
                         utmb_value["StartCurrSess"]="Error on conversion"
                         
-        print(self.current_file + "\t" + str(file_offset) + "\t" + str(c_type) + "\t" + str(host) + "\t" + utmb_value["PageViews"] + "\t" + utmb_value["Outbound"] + "\t" + utmb_value["StartCurrSess"] +  "\n")
+        #print(self.current_file + "\t" + str(file_offset) + "\t" + str(c_type) + "\t" + str(host) + "\t" + utmb_value["PageViews"] + "\t" + utmb_value["Outbound"] + "\t" + utmb_value["StartCurrSess"] +  "\n")
         return utmb_value    
 
     def parse_utmz(self, cookie_value,file_offset,host,c_type):
@@ -491,7 +474,7 @@ class CookieModule(FileIngestModule):
             #Last Update time
             if len(utmz_values[1])<=10:
                 utmz_value["LastUpdate_Epoch"] = int(utmz_values[1])
-                utmz_value["LastUpdate"]=(datetime.datetime.fromtimestamp(int(utmz_values[1])).strftime("%Y-%m-%d %H:%M:%S"))
+                #utmz_value["LastUpdate"]=(datetime.datetime.fromtimestamp(int(utmz_values[1])).strftime("%Y-%m-%d %H:%M:%S"))
             
             #some utmz domain hash values do not want to play nice and have some wonky values that include a period
             #which throws off the count. These also have a colon in them, so look for the colon, if found, advance the count by 1
@@ -538,6 +521,7 @@ class CookieModule(FileIngestModule):
                 try:
                     utmcmd_value,temp1, temp2 = utmcmd[1].partition('|')
                     utmz_value["AccesMethod"]=utmcmd_value 
+                    print "utmz keyword: " + utmz_value["AccessMethod"] + "\n"
                 except:
                     utmz_value["AccesMethod"]='unable to process, check offset' 
                     
@@ -550,9 +534,9 @@ class CookieModule(FileIngestModule):
                 try:
                     utmctr_value,temp1, temp2 = utmctr[1].partition('|')
                     utmz_value["Keyword"]=utmctr_value.replace('%20', " ")
+                    print "utmz keyword: " + utmz_value["Keyword"] + "\n"
                 except:
                     utmz_value["Keyword"]='unable to process, check offset'
-                
             else:
                 utmz_value["Keyword"]='utmctr not found' 
             
@@ -569,7 +553,7 @@ class CookieModule(FileIngestModule):
                 utmz_value["ReferringPage"]='utmcct not found'
             
             
-            print(self.current_file + "\t" + str(file_offset) + "\t" + str(c_type) + "\t" + str(host) + "\t" + str(utmz_value['LastUpdate']) + "\t" + str(utmz_value["Source"]) +"\t" + str(utmz_value["CampName"]) + "\t" + utmz_value["AccesMethod"] + "\t" + str(utmz_value["Keyword"]) + "\t" + utmz_value["ReferringPage"] + "\n")   
+            #print(self.current_file + "\t" + str(file_offset) + "\t" + str(c_type) + "\t" + str(host) + "\t" + str(utmz_value['LastUpdate']) + "\t" + str(utmz_value["Source"]) +"\t" + str(utmz_value["CampName"]) + "\t" + utmz_value["AccesMethod"] + "\t" + str(utmz_value["Keyword"]) + "\t" + utmz_value["ReferringPage"] + "\n")   
             return utmz_value
 
 
@@ -659,7 +643,7 @@ class CookieModule(FileIngestModule):
         max_size = 70    
         
         for m in pattern.finditer(chunk):
-            print "Chrome utma hit found at offset " + str(m.start())
+            #print "Chrome utma hit found at offset " + str(m.start())
             file_offset = (loop*(maxfilesize))+m.start()
                                     
             beginning_offset = m.start()-1  
@@ -767,7 +751,7 @@ class CookieModule(FileIngestModule):
         count = 0
         
         for m in pattern.finditer(chunk):
-            print "FireFox utma hit found at offset " + str(m.start())
+            #print "FireFox utma hit found at offset " + str(m.start())
                
             parts = re.split('([0-9]{0,10}\.){5}[0-9]{0,200}',m.group())
             host = parts[2]
