@@ -98,7 +98,7 @@ class CookieModule(FileIngestModule):
         lcFileName = file.getName().lower()
         lcParentPath = file.getParentPath().lower()
         #if lcFileName.find("cookies") != -1 or lcFileName.find(".txt") != -1 :
-        if lcFileName.find("cookies") != -1 or lcParentPath.endswith("windows\cookies") != -1 and lcFileName.find(".txt") != -1 :
+        if lcFileName.find("cookies") != -1 or lcParentPath.endswith("windows/cookies") != -1 and lcFileName.find(".txt") != -1 :
             self.gFile = file
             #tempFileName = "C:\\temp\\mak_" + uuid.uuid4()
             #print "temp file : " + tempFileName
